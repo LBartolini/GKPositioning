@@ -25,9 +25,9 @@ def main():
     # generate the population
     population = []
     for _ in range(POP_SIZE):
-        population.append(Network(np.concatenate(([2], HIDDEN_SIZE, [1])))) 
+        population.append(Network(np.concatenate(([2], HIDDEN_SIZE, [2])))) 
         # 2 input = distance between attacker and goal, angle between attacker and goal;
-        # 1 output = distance between GK and goal
+        # 2 output = distance of GK, angle of GK
     # repeat N times
     for epoch in range(EPOCHS):
         print("Epoch: ", epoch)

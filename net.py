@@ -8,8 +8,8 @@ def sigmoid(x):
 
 def relu(x):
     out = x
-    out[out<-1] = -1
-    out[out> -1 and out < 0] = 0
+    out[out < -1] = -1
+    out[out > -1 and out < 0] = 0
     return out
 
 def tanh(x):
