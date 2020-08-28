@@ -1,11 +1,16 @@
 import numpy as np
 from net import Network
-from sim import simulation
-
+from sim import *
 
 POP_SIZE = 50
-EPOCHS = 300
-HIDDEN_SIZE = [10]
+EPOCHS = 500
+HIDDEN_SIZE = [1, 3, 1]
+
+def get_bests(scores, n):
+    best_genome_indexes = np.argsort(scores)[::-1]
+
+    return best_genome_indexes[:n]
+
 
 def log_change(best_five):
     vectors = []
@@ -35,10 +40,12 @@ def main():
         scores = []
         for g in population:
             # store score for each genome
-            scores.append(simulation(g))
+            scores.append(simulation(g, rounds=500))
         
         # select the n best genomes
-        idx_bests = np.argmax(scores)
+        #idx_bests = np.argmax(scores)
+        idx_bests = get_bests(scores, n=5) # n of best genomes
+        print("Best score: ", scores[idx_bests[0]])
         bests = []
         for i in idx_bests:
             bests.append(population[i].export())
@@ -51,9 +58,12 @@ def main():
     
     # save to file
     for i, p in enumerate(population):
-        p.export().tofile(f"saves/net_{i}.txt", sep=" ")
+        if i == idx_bests[0]:
+            p.export().tofile(f"saves/best_net.txt", sep=" ")
+        else:
+            p.export().tofile(f"saves/net_{i}.txt", sep=" ")
 
-    
+
    
 
 if __name__ == '__main__':

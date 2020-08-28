@@ -1,6 +1,5 @@
 import numpy as np
 from net import Network
-from graphics import *
 
 width, height = 600, 600
 MAX_GK_DIM = 80
@@ -91,44 +90,43 @@ def get_prob(center_goal, atk, gk, gk_dim, goal_dim):
 
         prob = prob_left + prob_right
 
-    print(f"ATK: {atk}")
-    print(f"GK: {gk}")
-    print(f"LEFT: {left_goal}")
-    print(f"RIGHT: {right_goal}")
-    print(f"GK_DIM: {gk_dim}")
-    print(f"LEFT_INT: {left_int}")
-    print(f"RIGHT_INT: {right_int}")
-    print(f"ATK LEFT: {atk_left_line}")
-    print(f"ATK RIGHT: {atk_right_line}")
-    print(f"PERP: {perp_line}")
-    print(f"PROB LEFT: {prob_left}")
-    print(f"PROB RIGHT: {prob_right}")
-
-
     return prob
+
+def game(atk, net):
+    inp = np.array(get_inputs(atk, center_goal, goal_dim))
+    pred = net.forward_propagation(inp)
+    pred[0] *= penalty_area_r # distance to move (aka r)
+    pred[1] = np.degrees(pred[1]*2*np.pi) # direction where to move from the center of the goal (aka angle)
+    gk_pos = (pred[0]*np.cos(pred[1]), pred[0]*np.sin(pred[1])+center_goal[1]) # convert polar to cartesian coordinates
+
+    return gk_pos
 
 def simulation(net, rounds=100):
     score = 0
 
     # iterate over rounds
-    for _ in rounds:
-        # random select spot where to shoot
+    for _ in range(rounds):
+        # random select spot for attacker
         atk = center_goal # to get true the while contition
         while distance(center_goal, atk) <= penalty_area_r/2: # / 2 because if the attacker get too close the GK simply gets the ball
-            atk = np.randint(-width/2, size=2)
+            atk = np.random.randint(-width/2, width/2, size=2)
         
         # ask the network where to position
         inp = np.array(get_inputs(atk, center_goal, goal_dim))
         pred = net.forward_propagation(inp)
         pred[0] *= penalty_area_r # distance to move (aka r)
         pred[1] = np.degrees(pred[1]*2*np.pi) # direction where to move from the center of the goal (aka angle)
-
-        # select where to shoot
         gk_pos = (pred[0]*np.cos(pred[1]), pred[0]*np.sin(pred[1])+center_goal[1]) # convert polar to cartesian coordinates
-        prob_goal = get_prob(center_goal, atk, gk_pos, gk_dim, goal_dim)
+        
+        # select where to shoot
+        prob_goal = get_prob(center_goal, atk, gk_pos, gk_dim, goal_dim)*100
 
         # store if GK took goal or not
-    
+        if np.random.randint(0, 100) <= prob_goal:
+            continue
+        else:
+            score += 1
+            
     return score
 
 if __name__ == '__main__':
