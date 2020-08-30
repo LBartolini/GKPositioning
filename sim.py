@@ -1,13 +1,14 @@
 import numpy as np
 from net import Network
 
-width, height = 600, 600
+width, height = 400, 300
 MAX_GK_DIM = 80
 
 center_goal = (0, int(-height/2)+20)
 goal_dim = int(width*0.25)
 gk_dim = min(int(goal_dim*0.5), MAX_GK_DIM)
 penalty_area_r = int(width*0.25)
+base_movement = 10
 
 # https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines
 
@@ -95,7 +96,10 @@ def get_prob(center_goal, atk, gk, gk_dim, goal_dim):
 def game(atk, net):
     inp = np.array(get_inputs(atk, center_goal, goal_dim))
     pred = net.forward_propagation(inp)
-    pred[0] *= penalty_area_r # distance to move (aka r)
+
+    print(f"GK: {pred}")
+
+    pred[0] = (pred[0]*penalty_area_r) + base_movement # distance to move (aka r)
     pred[1] = np.degrees(pred[1]*2*np.pi) # direction where to move from the center of the goal (aka angle)
     gk_pos = (pred[0]*np.cos(pred[1]), pred[0]*np.sin(pred[1])+center_goal[1]) # convert polar to cartesian coordinates
 
@@ -109,14 +113,17 @@ def simulation(net, rounds=100):
         # random select spot for attacker
         atk = center_goal # to get true the while contition
         while distance(center_goal, atk) <= penalty_area_r/2: # / 2 because if the attacker get too close the GK simply gets the ball
-            atk = np.random.randint(-width/2, width/2, size=2)
+            atk = (np.random.randint(-width/2, width/2), np.random.randint(-height/2, height/2))
         
         # ask the network where to position
         inp = np.array(get_inputs(atk, center_goal, goal_dim))
         pred = net.forward_propagation(inp)
-        pred[0] *= penalty_area_r # distance to move (aka r)
+        pred[0] = (pred[0]*penalty_area_r) + base_movement# distance to move (aka r)
         pred[1] = np.degrees(pred[1]*2*np.pi) # direction where to move from the center of the goal (aka angle)
         gk_pos = (pred[0]*np.cos(pred[1]), pred[0]*np.sin(pred[1])+center_goal[1]) # convert polar to cartesian coordinates
+
+        if gk_pos[1] < center_goal[1]:
+            return 0
         
         # select where to shoot
         prob_goal = get_prob(center_goal, atk, gk_pos, gk_dim, goal_dim)*100

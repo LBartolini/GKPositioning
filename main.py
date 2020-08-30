@@ -3,26 +3,30 @@ from net import Network
 from sim import *
 
 POP_SIZE = 50
-EPOCHS = 500
-HIDDEN_SIZE = [1, 3, 1]
+N_BESTS = int(POP_SIZE*0.1)
+EPOCHS = 50
+ROUNDS = 100
+HIDDEN_SIZE = [5]
+RUNS_PER_GENOME = 10
 
 def get_bests(scores, n):
     best_genome_indexes = np.argsort(scores)[::-1]
 
     return best_genome_indexes[:n]
 
-
-def log_change(best_five):
+def log_change(bests, pop_size, proportion_log=0.5):
     vectors = []
+    log_space = int((pop_size - len(bests))*proportion_log)
+    random_uniform = pop_size - log_space
 
-    for i, j in zip(np.logspace(-5, -1, 4), range(len(best_five))):
-        vectors.append(best_five[j] + (np.random.uniform(-1, 1, len(best_five[j]))*i)*best_five[j])
+    for i, j in zip(np.logspace(-4, -1, log_space), range(len(bests))):
+        vectors.append(bests[j] + (np.random.uniform(-1, 1, len(bests[j]))*i)*bests[j])
 
-    for _ in range(25):
-        vectors.append(np.random.uniform(-1, 1, len(best_five[0])))
+    for _ in range(random_uniform):
+        vectors.append(np.random.uniform(-1, 1, len(bests[0])))
 
-    for i in range(len(best_five)):
-        vectors.append(best_five[i])
+    for i in range(len(bests)):
+        vectors.append(bests[i])
 
     return np.array(vectors)
 
@@ -39,18 +43,22 @@ def main():
         # iterate over genomes and call simulation
         scores = []
         for g in population:
+            means = []
             # store score for each genome
-            scores.append(simulation(g, rounds=500))
+            for _ in range(RUNS_PER_GENOME):
+                means.append(simulation(g, rounds=ROUNDS))
+            
+            scores.append(np.mean(means))
         
         # select the n best genomes
         #idx_bests = np.argmax(scores)
-        idx_bests = get_bests(scores, n=5) # n of best genomes
+        idx_bests = get_bests(scores, n=N_BESTS) # n of best genomes
         print("Best score: ", scores[idx_bests[0]])
         bests = []
         for i in idx_bests:
             bests.append(population[i].export())
         # call log_change on best genomes
-        new_weights = log_change(bests)
+        new_weights = log_change(bests, POP_SIZE, proportion_log=0.5)
 
         # generate new population based on log_change
         for i, nw in enumerate(new_weights):
