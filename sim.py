@@ -12,16 +12,22 @@ class Point:
 
     def __repr__(self):
         return f'X: {self.x}, Y: {self.y}, is_null: {self.is_null}'
-    
 
-width, height = 600, 600
-MAX_GK_DIM = 40
-GOAL_LINE = 20
+
+width, height = 600, 1000
+MAX_GK_DIM = 60
+GOAL_LINE = 10
 
 center_goal = Point(0, int(-height/2)+GOAL_LINE)
-goal_dim = int(width*0.25)
-gk_dim = min(int(goal_dim*0.5), MAX_GK_DIM)
-penalty_area_r = int(width*0.25)
+goal_dim = int(width*0.2)
+gk_dim = min(int(goal_dim*0.4), MAX_GK_DIM) # diameter not radius
+penalty_area_r = int(width*0.3) # radius (180)
+
+def gaussian(x):
+    a=25
+    coeff = 2.5*a
+    b=3/2*gk_dim
+    return coeff/(a*np.sqrt(2*np.pi))*(np.exp(1)**(-0.5*(((x-b)/a)**2)))
 
 # https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines
 
@@ -86,8 +92,7 @@ def compute_perp_atk_gk(atk_gk_line, gk: Point):
     return slope_perp, 1, int_perp
     
 
-def get_prob(center_goal: Point, atk: Point, gk: Point, gk_dim, goal_dim):
-    prob = 1
+def get_prob(center_goal: Point, atk: Point, gk: Point, gk_dim, goal_dim, lob=False):
     #gk = (r*np.cos(angle), r*np.sin(angle)+center_goal[1]) # convert polar to cartesian coordinates
     left_post = Point(center_goal.x-(goal_dim/2), center_goal.y)
     right_post = Point(center_goal.x+(goal_dim/2), center_goal.y)
@@ -95,20 +100,30 @@ def get_prob(center_goal: Point, atk: Point, gk: Point, gk_dim, goal_dim):
     atk_gk_line = line(atk, gk)
     atk_left_line = line(atk, left_post)
     atk_right_line = line(atk, right_post)
-    vertical_gk = line(gk, Point(gk.x,gk.y+1))
+   
+    perp_line = compute_perp_atk_gk(atk_gk_line, gk)
 
-    if check_gk_pos(atk_left_line, atk_right_line, vertical_gk, gk):   
-        perp_line = compute_perp_atk_gk(atk_gk_line, gk)
+    left_int = intersection(atk_left_line, perp_line)
+    right_int = intersection(atk_right_line, perp_line)
 
-        left_int = intersection(atk_left_line, perp_line)
-        right_int = intersection(atk_right_line, perp_line)
+    #computing probs of atk scoring based on the position of the goalie and its width
+    prob_left = (max(distance(left_int, gk) -
+                     (gk_dim/2), 0) / distance(left_int, gk))
+    prob_right = (max(distance(right_int, gk) -
+                      (gk_dim/2), 0) / distance(right_int, gk))
 
-        #prob_left = (distance(left_int, gk) / (distance(left_int, gk) - gk_dim/2)) - 1
-        #prob_right = (distance(right_int, gk) / (distance(right_int, gk) - gk_dim/2)) - 1
-        prob_left = (max(distance(left_int, gk) - gk_dim/2, 0) / distance(left_int, gk))
-        prob_right = (max(distance(right_int, gk) - gk_dim/2, 0) / distance(right_int, gk))
+    #computing lob probability
+    dst_gk_goal = distance(gk, center_goal)
+    dst_gk_atk = distance(gk, atk)
 
-        prob = prob_left + prob_right
+    val_dst_atk_gk = gaussian(dst_gk_atk)
+    val_dst_gk_goal = max((dst_gk_goal / (gk_dim/2))-1, 0)
+
+    prob_lob = val_dst_gk_goal * val_dst_atk_gk
+
+
+    #calculating final prob
+    prob = min(prob_left*0.4 + prob_right*0.4 + prob_lob*0.2, 1)
 
     return prob
 
@@ -161,7 +176,10 @@ if __name__ == '__main__':
 
     print(pred)
     '''
-    atk = Point(10, 0)
-    gk = Point(0, GOAL_LINE)
+    atk = Point(0, -250)
+    gk = Point(center_goal.x, center_goal.y)
+
+    #goal = -490
+    #top_pen_area = -310
 
     print(get_prob(center_goal, atk, gk, gk_dim, goal_dim))
