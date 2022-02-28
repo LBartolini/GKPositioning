@@ -2,14 +2,12 @@ import turtle
 import numpy as np
 from sim import game
 from net import Network
-from main import HIDDEN_SIZE, width, height, goal_dim, penalty_area_r
+from main import width, height, goal_dim, penalty_area_r
 
 wn = turtle.Screen()
 pen = turtle.Turtle()
 atk = turtle.Turtle()
 gk = turtle.Turtle()
-
-gk_net = Network(np.concatenate(([2], HIDDEN_SIZE, [2])), weights_path='saves/best_net.txt')
 
 def play(width, height, goal_dim, penalty_area_r):
     originx , originy = -width/2, height/2
@@ -74,7 +72,7 @@ def place_atk(atk_pos):
     atk.dot()
     atk.penup()
 
-    place_gk(game(atk_pos, gk_net))
+    #place_gk(game(atk_pos, gk_net))
 
 def place_gk(gk_pos):
     gk.pendown()

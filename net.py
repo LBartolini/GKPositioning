@@ -2,9 +2,11 @@ import numpy as np
 
 np.random.seed(0)
 
+
 def sigmoid(x):
     out = 1 / (1+np.exp(-x))
     return out
+
 
 def relu(x):
     out = x
@@ -12,19 +14,22 @@ def relu(x):
     out[out > -1 and out < 0] = 0
     return out
 
+
 def tanh(x):
     out = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
     return out
+
 
 class Network(object):
     def __init__(self, shape, weights_path=None):
         self.shape = shape
         self.weights = []
         self.bias = []
-        
+
         for i in range(len(self.shape)-1):
-            self.weights.append(np.random.uniform(-1, 1, (self.shape[i], self.shape[i+1])))
-            
+            self.weights.append(
+                np.random.uniform(-1, 1, (self.shape[i], self.shape[i+1])))
+
         for i in range(len(self.shape)-1):
             self.bias.append(np.random.uniform(-1, 1, self.shape[i+1]))
 
@@ -44,26 +49,29 @@ class Network(object):
             self.layers[i+1] = sigmoid(self.layers[i+1])
         return self.layers[len(self.layers)-1]
 
-    def export(self):
+    def backward_propagation(self):
+        pass
+
+    def export_(self):
         vect = []
         for layer in self.weights:
             for k in layer:
-                for j in k: 
+                for j in k:
                     vect.append(j)
         for i in self.bias:
             for k in i:
-                vect.append(k) 
+                vect.append(k)
 
         return np.array(vect)
 
-    def _import(self, vect):
+    def import_(self, vect):
         s = 0
         for layer in range(len(self.shape)-1):
             for k in range(len(self.weights[layer])):
-                for j in range(len(self.weights[layer][k])):    
+                for j in range(len(self.weights[layer][k])):
                     self.weights[layer][k][j] = vect[s]
                     s += 1
         for i in range(len(self.shape)-1):
             for k in range(len(self.bias[i])):
-                self.bias[i][k] = vect[s] 
-                s += 1  
+                self.bias[i][k] = vect[s]
+                s += 1
