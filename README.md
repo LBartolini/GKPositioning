@@ -1,2 +1,2 @@
 # GKPositioning
-Genetic Algorithm for Positioning GK against attacker in Soccer
+Algorithm for Positioning GK against attacker in Football

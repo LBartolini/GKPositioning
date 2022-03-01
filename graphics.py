@@ -1,8 +1,8 @@
 import turtle
 import numpy as np
-from sim import game
-from net import Network
-from main import width, height, goal_dim, penalty_area_r
+#from sim import game
+#from net import Network
+#from main import width, height, goal_dim, penalty_area_r
 
 wn = turtle.Screen()
 pen = turtle.Turtle()
@@ -87,4 +87,4 @@ def place_gk(gk_pos):
     gk.penup()
 
 if __name__ == '__main__':
-    play(width, height, goal_dim, penalty_area_r)
+    play(600, 1000, 40, 80)
