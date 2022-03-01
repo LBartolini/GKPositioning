@@ -1,25 +1,25 @@
 import turtle
 import numpy as np
-#from sim import game
+from sim import Env
 #from net import Network
 #from main import width, height, goal_dim, penalty_area_r
 
 wn = turtle.Screen()
 pen = turtle.Turtle()
+
 atk = turtle.Turtle()
 gk = turtle.Turtle()
 
-def play(width, height, goal_dim, penalty_area_r):
-    originx , originy = -width/2, height/2
-    center_goal = -originy+20
+def play(env: Env):
 
     wn.title("GKPositioning")
-    wn.setup(width=width, height=height)
+    wn.setup(width=env.width, height=env.height)
     wn.bgcolor("black")
     wn.tracer(0)
     wn.onscreenclick(lambda x, y: place_atk((x, y)))
 
-    pen.speed(0)
+    pen.speed('fastest')
+    pen.pensize(2)
 
     atk.speed('fastest')
     atk.setpos((0, 0))
@@ -30,7 +30,7 @@ def play(width, height, goal_dim, penalty_area_r):
     atk.penup()
 
     gk.speed('fastest')
-    gk.setpos((0, center_goal+30))
+    gk.setpos((0, env.center_goal.y))
     gk.pensize(6)
     gk.pendown()
     gk.color('green')
@@ -38,24 +38,24 @@ def play(width, height, goal_dim, penalty_area_r):
     gk.penup()
 
     # Bottom line
-    pen.setpos(originx, center_goal)
-    pen.color("white")
+    pen.setpos(env.center_goal.get_tuple())
     pen.pendown()
-    pen.forward(width)
+    pen.color("white")
+    pen.dot()
     pen.penup()
 
     # Goal
-    pen.setpos(-goal_dim/2, center_goal)
-    pen.color("blue")
+    pen.setpos((env.center_goal.x-env.goal_dim/2, env.center_goal.y))
     pen.pendown()
-    pen.forward(goal_dim)
+    pen.color("blue")
+    pen.forward(env.goal_dim)
     pen.penup()
 
     # Penalty Area
-    pen.setpos(0, center_goal-penalty_area_r)
+    pen.setpos(env.center_goal.get_tuple())
     pen.color("white")
     pen.pendown()
-    pen.circle(penalty_area_r)
+    pen.circle(env.penalty_area_r)
     pen.penup()
 
     wn.mainloop()
@@ -87,4 +87,5 @@ def place_gk(gk_pos):
     gk.penup()
 
 if __name__ == '__main__':
-    play(600, 1000, 40, 80)
+    env = Env()
+    play(env)

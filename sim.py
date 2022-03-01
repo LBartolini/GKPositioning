@@ -1,5 +1,4 @@
 import numpy as np
-from net import Network
 
 class Point:
     def __init__(self, x, y, is_null=False):
@@ -53,7 +52,7 @@ class Line:
 
 
 class Env:
-    def __init__(self, width=600, height=1000, GOAL_PERC=0.2, GK_WIDTH_PERC=0.4, PEN_AREA_PERC=0.3, MAX_GK_DIM=60, GOAL_LINE=10):
+    def __init__(self, width=600, height=800, GOAL_PERC=0.2, GK_WIDTH_PERC=0.4, PEN_AREA_PERC=0.3, MAX_GK_DIM=60, GOAL_LINE=10):
         self.width, self.height = width, height
         self.MAX_GK_DIM = MAX_GK_DIM
         self.GOAL_LINE = GOAL_LINE
