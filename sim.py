@@ -141,8 +141,8 @@ class Env:
         return prob
 
     def get_gk_position(self, atk: Point, net) -> Point:
-        inp = np.array(self.atk_polar(atk))
-        pred = net.forward_propagation(inp)
+        inp = np.array([self.atk_polar(atk)])
+        pred = net.predict(inp)[0][0]
         pred[0] *= self.penalty_area_r # distance to move (aka r)
         pred[1] = np.degrees(pred[1]*np.pi) # direction where to move from the center of the goal (aka angle)
         
@@ -160,32 +160,21 @@ class Env:
         y = min(np.random.randint(-self.height/2, self.height/2)+self.GOAL_LINE, self.height/2)
         atk = Point(x, y)
 
+        # ask the network where to position the goalkeeper
+        gk_pos = self.get_gk_position(atk, net)
+
+        # compute probability of scoring
+        prob_goal = self.get_prob(atk, gk_pos)*1000 # 1_000 for accuracy
+
         # iterate over steps
         for _ in range(steps):
-            # ask the network where to position the goalkeeper
-            gk_pos = self.get_gk_position(atk, net)
-            
-            # compute probability of scoring
-            prob_goal = self.get_prob(atk, gk_pos)*1000 # 1_000 for accuracy
-
             # store if GK took goal or not
             if np.random.randint(0, 1000) > prob_goal:
                 score += 1
                
-        return score
+        return atk, gk_pos, score
 
 if __name__ == '__main__':
-    #setup(width, height, goal_dim, penalty_area_r)
-    '''
-    net = Network(np.concatenate(([2], [10], [2])))        
-
-    inp = np.array(get_inputs((-10, 10), center_goal))
-    pred = net.forward_propagation(inp)
-    pred[0] *= penalty_area_r # distance to move
-    pred[1] = np.degrees(pred[1]*2*np.pi)
-
-    print(pred)
-    '''
     env = Env()
 
     atk = Point(0, -370)
