@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 class Point:
@@ -38,13 +39,15 @@ class Line:
         return f'A: {self.a}, B: {self.b}, C: {self.c}'
 
     @staticmethod
-    def intersection(L1, L2) -> Point: 
-        D  = L1.a * L2.b - L1.b * L2.a
-        Dx = L1.c * L2.b - L1.b * L2.c
-        Dy = L1.a * L2.c - L1.c * L2.a
-        if D != 0:
-            x = Dx / D
-            y = Dy / D
+    def intersection(l1, l2) -> Point: 
+        d  = l1.a * l2.b - l1.b * l2.a
+        Dx = l1.c * l2.b - l1.b * l2.c
+        Dy = l1.a * l2.c - l1.c * l2.a
+
+        if d != 0:
+            x = Dx / d
+            y = Dy / d
+
             return Point(x, y)
         else:
             return Point(0, 0, True)
@@ -52,15 +55,16 @@ class Line:
 
 
 class Env:
-    def __init__(self, width=600, height=800, GOAL_PERC=0.2, GK_WIDTH_PERC=0.4, PEN_AREA_PERC=0.3, MAX_GK_DIM=60, GOAL_LINE=10):
+    def __init__(self, width=600, height=600, steps=50, GOAL_PERC=0.2, GK_WIDTH_PERC=0.6, PEN_AREA_PERC=0.3, MAX_GK_DIM=60, GOAL_LINE=5):
         self.width, self.height = width, height
         self.MAX_GK_DIM = MAX_GK_DIM
         self.GOAL_LINE = GOAL_LINE
+        self.steps = steps
 
         self.center_goal = Point(0, int(-height/2)+self.GOAL_LINE)
         self.goal_dim = int(width*GOAL_PERC)
         self.gk_dim = min(int(self.goal_dim*GK_WIDTH_PERC), self.MAX_GK_DIM) # diameter not radius
-        self.penalty_area_r = int(width*PEN_AREA_PERC) # radius (180)
+        self.penalty_area_r = int(width*PEN_AREA_PERC)
 
     def gaussian(self, x):
         a=25
@@ -70,35 +74,31 @@ class Env:
 
     def compute_perp_atk_gk(self, atk_gk_line: Line, gk: Point) -> Line:
         try:
-            slope_atk_gk_line = atk_gk_line.a/atk_gk_line.b  # slope = -a/b
+            slope_atk_gk_line = - atk_gk_line.a / atk_gk_line.b  # slope = -a/b
             slope_perp = -1 / slope_atk_gk_line  # m
         except ZeroDivisionError:
             slope_perp = 0  # m
 
-        try:
-            int_perp = gk.y - (-slope_perp * gk.x)  # q
-        except ZeroDivisionError:
-            print("questo non dovrebbe mai accadere, wtf???")
-            if gk.x == 0:
-                int_perp = gk.y
+        int_perp = gk.y - (-slope_perp * gk.x)  # q
 
         return Line(slope_perp, 1, int_perp)
     
 
     def get_prob(self, atk: Point, gk: Point, lob=True):
-        if Point.distance(gk, self.center_goal) > self.penalty_area_r:
+        if Point.distance(gk, self.center_goal) > self.penalty_area_r or gk.y < self.center_goal.y:
             return 1
 
         probs = []
+        remaining_prob = 0.8 if lob else 1
 
         #gk = (r*np.cos(angle), r*np.sin(angle)+center_goal[1]) # convert polar to cartesian coordinates
         left_post = Point(self.center_goal.x-(self.goal_dim/2), self.center_goal.y)
         right_post = Point(self.center_goal.x+(self.goal_dim/2), self.center_goal.y)
 
-        atk_gk_line = Line.from_points(atk, gk)
         atk_left_line = Line.from_points(atk, left_post)
         atk_right_line = Line.from_points(atk, right_post)
-    
+
+        atk_gk_line = Line.from_points(atk, gk)
         perp_line = self.compute_perp_atk_gk(atk_gk_line, gk)
 
         left_int = Line.intersection(atk_left_line, perp_line)
@@ -110,8 +110,8 @@ class Env:
         prob_right = (max(Point.distance(right_int, gk) -
                         (self.gk_dim/2), 0) / Point.distance(right_int, gk))
 
-        probs.append((prob_left, 0.4))
-        probs.append((prob_right, 0.4))
+        probs.append((prob_left, remaining_prob/2))
+        probs.append((prob_right, remaining_prob/2))
 
         if lob:
             #computing lob probability
@@ -136,28 +136,20 @@ class Env:
 
         return Point(x, y) 
 
-    def sim(self, atk, gk_pos, steps=50):
+    def sim(self, atk, gk_pos):
         #returns the score obtained by the agent on a given atk position
-        score = 0
 
         # compute probability of scoring
-        prob_goal = self.get_prob(atk, gk_pos)
+        prob_goal = self.get_prob(atk, gk_pos, lob=False)
 
-        # iterate over steps
-        for _ in range(steps):
-            # store if GK took goal or not
-            if np.random.random() > prob_goal:
-                score += 1
+        if math.isnan(prob_goal): return 0
                
-        return score
+        return int((1-prob_goal)*self.steps)
 
 if __name__ == '__main__':
-    env = Env()
+    env = Env(width=80, height=80)
 
-    atk = Point(0, -370)
-    gk = Point(env.center_goal.x, env.center_goal.y+50)
+    atk = Point(0, 0)
+    gk = Point(0, -29)
 
-    #goal = -490
-    #top_pen_area = -310
-
-    print(env.get_prob(atk, gk, lob=True))
+    print(env.get_prob(atk, gk, lob=False))
