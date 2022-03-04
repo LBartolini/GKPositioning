@@ -3,11 +3,26 @@ from typing import List, Tuple
 from sim import *
 from net import *
 
-EPOCHS_SIM = 5
-POPULATION_SIM=10_000
+import warnings
+warnings.filterwarnings("ignore")
 
-EPOCH_TRAINING = 50
+EPOCHS_SIM = 20
+POPULATION_SIM = 5_000
+ENV_STEPS = 50
+REPS = 10 # repetitions of the same atk position with some randomness for gk position
+
+RANDOMNESS = 12 # randomly chose in the range [-3, 3] and then summed to gk coords
+
+EPOCH_TRAINING = 30
+RESET_NET = False
 LR = 0.01
+DYN_LR = 1.1
+
+HIDDEN_DIM = 50
+HIDDEN_LAYERS = 2
+
+WIDTH=60
+HEIGHT=60
 
 def one_hot(value, dimension) -> List:
     x = np.zeros(dimension+1, dtype=np.int8)
@@ -30,7 +45,7 @@ def get_train_set(X, y, scores, env, top=0.2):
         yx_train.append([x_one_hot])
         yy_train.append([y_one_hot])
 
-    return np.array(X_train), np.array(yx_train), np.array(yy_train),  np.mean(scores), np.std(scores), np.max(scores)
+    return np.array(X_train), np.array(yx_train), np.array(yy_train),  np.mean(scores)/100, np.std(scores)/100, np.max(scores)/100
 
 def get_one_hot_from_point(point: Point, env: Env) -> Tuple[List, List]:
     x_one_hot = one_hot(point.x, env.width)
@@ -59,16 +74,22 @@ def get_gk_position(atk, net_x, net_y, env) -> Point:
     inp = np.array([x_one_hot+y_one_hot])
 
     pred_x = net_x.predict(inp)[0][0]
-    pred_y = net_y.predict(inp)[0][0]
+    pred_y = net_y.predict(inp)[0][0]    
 
     return Point(np.argmax(pred_x)-env.width/2, np.argmax(pred_y)-env.height/2)
 
+def randomize(gk, rnd) -> Point:
+    offset_x = np.random.choice(rnd*2+1)-rnd
+    offset_y = np.random.choice(rnd*2+1)-rnd
+
+    return Point(gk.x+offset_x, gk.y+offset_y)
+
 def main():
     lr = LR
-    env = Env(width=60, height=60)
+    env = Env(width=WIDTH, height=HEIGHT, steps=ENV_STEPS*100)
 
-    net_x = create_net(env.width+env.height+2, env.width+1)
-    net_y = create_net(env.width+env.height+2, env.height+1)
+    net_x = create_net(env.width+env.height+2, env.width+1, HIDDEN_LAYERS, HIDDEN_DIM)
+    net_y = create_net(env.width+env.height+2, env.height+1, HIDDEN_LAYERS, HIDDEN_DIM)
 
     for k in range(EPOCHS_SIM):
         print(f"-----\nMAIN EPOCH: {k}\n")
@@ -77,31 +98,39 @@ def main():
         scores = [] # scores recorder for each iteration
 
         for _ in range(POPULATION_SIM):
-            atk = env.get_random_atk_position()
-            gk = get_gk_position(atk, net_x, net_y, env)
+            atk = env.get_random_atk_position()            
+            gk_base = get_gk_position(atk, net_x, net_y, env)
 
-            score = env.sim(atk, gk)
+            for _ in range(REPS):
+                gk = randomize(gk_base, RANDOMNESS) 
 
-            X.append(atk.get_tuple())
-            y.append(gk.get_tuple())
-            scores.append(score)
+                score = env.sim(atk, gk)
+
+                X.append(atk.get_tuple())
+                y.append(gk.get_tuple())
+                scores.append(score)
         
-        X_train, yx_train, yy_train, mean, std, max = get_train_set(X, y, scores, env, top=0.5)
+        X_train, yx_train, yy_train, mean, std, max = get_train_set(X, y, scores, env, top=0.2)
         print(f"Mean: {mean} (std: {std})")
         print(f"Max: {max}\n\n")
 
         if len(X_train) == 0:
             print("JUMPED\n")
             continue
-            
-        net_x = create_net(env.width+env.height+2, env.width+1)
-        net_y = create_net(env.width+env.height+2, env.height+1)
+        
+        if RESET_NET:
+            net_x = create_net(env.width+env.height+2, env.width+1, HIDDEN_LAYERS, HIDDEN_DIM)
+            net_y = create_net(env.width+env.height+2, env.height+1, HIDDEN_LAYERS, HIDDEN_DIM)
 
         print("Net X")
         net_x.fit(X_train, yx_train, epochs=EPOCH_TRAINING, learning_rate=lr)
         
         print("Net Y")
         net_y.fit(X_train, yy_train, epochs=EPOCH_TRAINING, learning_rate=lr)
+
+        lr *= DYN_LR
+
+        lr = min(lr, 0.1)
     
     print("Training Ended")
     while True:

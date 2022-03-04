@@ -82,11 +82,23 @@ class Env:
         int_perp = gk.y - (-slope_perp * gk.x)  # q
 
         return Line(slope_perp, 1, int_perp)
+
+    def check_gk_position(self, gk: Point) -> bool:
+        # gk need to be inside penalty area
+        if Point.distance(gk, self.center_goal) > self.penalty_area_r: return True
+
+        # gk has to be not behind the goal line
+        if gk.y < self.center_goal.y: return True
+
+        # gk needs to be inside the field
+        if gk.x > self.width/2 or gk.x < -self.width/2: return True
+        if gk.y > self.height/2 or gk.y < -self.height/2: return True
+
+        return False
     
 
     def get_prob(self, atk: Point, gk: Point, lob=True):
-        if Point.distance(gk, self.center_goal) > self.penalty_area_r or gk.y < self.center_goal.y:
-            return 1
+        if self.check_gk_position(gk): return 1
 
         probs = []
         remaining_prob = 0.8 if lob else 1
@@ -133,6 +145,9 @@ class Env:
     def get_random_atk_position(self):
         x = np.random.randint(-self.width/2, self.width/2)
         y = min(np.random.randint(-self.height/2, self.height/2)+self.GOAL_LINE, self.height/2)
+
+        while Point.distance(Point(x, y), self.center_goal) < self.penalty_area_r:
+            y = min(np.random.randint(-self.height/2, self.height/2)+self.GOAL_LINE, self.height/2)
 
         return Point(x, y) 
 
