@@ -6,52 +6,36 @@ from net import *
 import warnings
 warnings.filterwarnings("ignore")
 
-EPOCHS_SIM = 20
-POPULATION_SIM = 5_000
+EPOCHS_SIM = 10
+POPULATION_SIM = 1_000
 ENV_STEPS = 50
-REPS = 10 # repetitions of the same atk position with some randomness for gk position
+REPS = 20 # repetitions of the same atk position with some randomness for gk position
 
-RANDOMNESS = 12 # randomly chose in the range [-3, 3] and then summed to gk coords
+RANDOMNESS = 13 # randomly chose in the range [-3, 3] and then summed to gk coords
 
-EPOCH_TRAINING = 30
+EPOCH_TRAINING = 50
 RESET_NET = False
-LR = 0.01
-DYN_LR = 1.1
+LR = 0.05
+MAX_LR = 0.1
+DYN_LR = 1.1 # set to 1 for static_lr
 
-HIDDEN_DIM = 50
-HIDDEN_LAYERS = 2
+HIDDEN_DIM = 10
+HIDDEN_LAYERS = 1
 
 WIDTH=60
 HEIGHT=60
 
-def one_hot(value, dimension) -> List:
-    x = np.zeros(dimension+1, dtype=np.int8)
-    x[int(value+((dimension+1)/2))] = 1
-
-    return list(x)
-
 def get_train_set(X, y, scores, env, top=0.2):
     scores_sorted, X_sorted, y_sorted  = list(zip(*sorted(zip(scores, X, y), reverse=True)))
-
-    X_train, yx_train, yy_train = [], [], []
+    X_train, y_train = [], []
 
     for i in range(int(len(scores_sorted)*top)):
         if scores_sorted[i] == 0 or scores_sorted[i] < int(env.steps*(1-top*2)): continue
 
-        x_one_hot, y_one_hot = get_one_hot_from_point(Point(X_sorted[i][0], X_sorted[i][1]), env)
-        X_train.append([x_one_hot+y_one_hot])
+        X_train.append([[X_sorted[i][0]/(env.width/2), X_sorted[i][1]/(env.height/2)]])
+        y_train.append([[y_sorted[i][0]/(env.width/2), y_sorted[i][1]/(env.height/2)]])
 
-        x_one_hot, y_one_hot = get_one_hot_from_point(Point(y_sorted[i][0], y_sorted[i][1]), env)
-        yx_train.append([x_one_hot])
-        yy_train.append([y_one_hot])
-
-    return np.array(X_train), np.array(yx_train), np.array(yy_train),  np.mean(scores)/100, np.std(scores)/100, np.max(scores)/100
-
-def get_one_hot_from_point(point: Point, env: Env) -> Tuple[List, List]:
-    x_one_hot = one_hot(point.x, env.width)
-    y_one_hot = one_hot(point.y, env.height)
-
-    return x_one_hot, y_one_hot
+    return np.array(X_train),  np.array(y_train),  np.mean(scores)/100, np.std(scores)/100, np.max(scores)/100
 
 def create_net(inp_dim, out_dim, n_hidden=2, hidden_dim=10) -> Network:
     net = Network()
@@ -63,20 +47,22 @@ def create_net(inp_dim, out_dim, n_hidden=2, hidden_dim=10) -> Network:
         net.add(ActivationLayer(tanh, tanh_prime))
 
     net.add(FCLayer(hidden_dim, out_dim))
-    net.add(ActivationLayer(sigmoid, sigmoid_prime))
+    net.add(ActivationLayer(tanh, tanh_prime))
 
     net.use(mse, mse_prime)
 
     return net
 
-def get_gk_position(atk, net_x, net_y, env) -> Point:
-    x_one_hot, y_one_hot = get_one_hot_from_point(atk, env)
-    inp = np.array([x_one_hot+y_one_hot])
+def get_gk_position(atk, net, env) -> Point:
+    x, y = atk.get_tuple()
+    x /= (env.width/2)
+    y /= (env.height/2)
 
-    pred_x = net_x.predict(inp)[0][0]
-    pred_y = net_y.predict(inp)[0][0]    
+    inp = np.array([[x, y]])
 
-    return Point(np.argmax(pred_x)-env.width/2, np.argmax(pred_y)-env.height/2)
+    pred_x, pred_y = net.predict(inp)[0][0]
+
+    return Point(int(pred_x*(env.width/2)), int(pred_y*(env.height/2)))
 
 def randomize(gk, rnd) -> Point:
     offset_x = np.random.choice(rnd*2+1)-rnd
@@ -88,8 +74,7 @@ def main():
     lr = LR
     env = Env(width=WIDTH, height=HEIGHT, steps=ENV_STEPS*100)
 
-    net_x = create_net(env.width+env.height+2, env.width+1, HIDDEN_LAYERS, HIDDEN_DIM)
-    net_y = create_net(env.width+env.height+2, env.height+1, HIDDEN_LAYERS, HIDDEN_DIM)
+    net = create_net(2, 2, HIDDEN_LAYERS, HIDDEN_DIM)
 
     for k in range(EPOCHS_SIM):
         print(f"-----\nMAIN EPOCH: {k}\n")
@@ -99,7 +84,7 @@ def main():
 
         for _ in range(POPULATION_SIM):
             atk = env.get_random_atk_position()            
-            gk_base = get_gk_position(atk, net_x, net_y, env)
+            gk_base = get_gk_position(atk, net, env)
 
             for _ in range(REPS):
                 gk = randomize(gk_base, RANDOMNESS) 
@@ -110,7 +95,7 @@ def main():
                 y.append(gk.get_tuple())
                 scores.append(score)
         
-        X_train, yx_train, yy_train, mean, std, max = get_train_set(X, y, scores, env, top=0.2)
+        X_train, y_train, mean, std, max = get_train_set(X, y, scores, env, top=0.2)
         print(f"Mean: {mean} (std: {std})")
         print(f"Max: {max}\n\n")
 
@@ -119,29 +104,22 @@ def main():
             continue
         
         if RESET_NET:
-            net_x = create_net(env.width+env.height+2, env.width+1, HIDDEN_LAYERS, HIDDEN_DIM)
-            net_y = create_net(env.width+env.height+2, env.height+1, HIDDEN_LAYERS, HIDDEN_DIM)
-
-        print("Net X")
-        net_x.fit(X_train, yx_train, epochs=EPOCH_TRAINING, learning_rate=lr)
-        
-        print("Net Y")
-        net_y.fit(X_train, yy_train, epochs=EPOCH_TRAINING, learning_rate=lr)
+            net = create_net(2, 2, HIDDEN_LAYERS, HIDDEN_DIM)
+            
+        net.fit(X_train, y_train, epochs=EPOCH_TRAINING, learning_rate=lr)
 
         lr *= DYN_LR
-
-        lr = min(lr, 0.1)
+        lr = min(lr, MAX_LR)
     
-    print("Training Ended")
+    print("\nTraining Ended")
     while True:
-        print('\n\n\n')
+        print('\n\n')
         x = int(input("Insert X: "))
         y = int(input("Insert Y: "))
 
-        x_gk = net_x.predict(np.array([one_hot(x, env.width)+one_hot(y, env.height)]))
-        y_gk = net_y.predict(np.array([one_hot(x, env.width)+one_hot(y, env.height)]))
+        gk_x, gk_y = net.predict(np.array([[x/(env.width/2), y/(env.height/2)]]))[0][0]
 
-        print((np.argmax(x_gk)-env.width/2, np.argmax(y_gk)-env.height/2))
+        print(int(gk_x*(env.width/2)), int(gk_y*(env.height/2)))
 
 if __name__ == '__main__':
     main()
