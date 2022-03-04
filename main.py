@@ -29,7 +29,7 @@ def get_train_set(X, y, scores, env, top=0.3):
             yx_train.append([x_one_hot])
             yy_train.append([y_one_hot])
 
-    return np.array(X_train), np.array(yx_train), np.array(yy_train), np.array(treshold)
+    return np.array(X_train), np.array(yx_train), np.array(yy_train), treshold
 
 def get_one_hot_from_point(point: Point, env: Env) -> Tuple[List, List]:
     x_one_hot = one_hot(point.x, env.width)
@@ -87,7 +87,10 @@ def main():
         X_train, yx_train, yy_train, treshold = get_train_set(X, y, scores, env)
         print(f"Treshold: {treshold}\n\n")
 
+        print("Net X")
         net_x.fit(X_train, yx_train, epochs=EPOCH_TRAINING, learning_rate=LR)
+        
+        print("Net Y")
         net_y.fit(X_train, yy_train, epochs=EPOCH_TRAINING, learning_rate=LR)
 
 

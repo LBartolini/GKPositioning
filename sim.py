@@ -86,6 +86,9 @@ class Env:
     
 
     def get_prob(self, atk: Point, gk: Point, lob=True):
+        if Point.distance(gk, self.center_goal) > self.penalty_area_r:
+            return 1
+
         probs = []
 
         #gk = (r*np.cos(angle), r*np.sin(angle)+center_goal[1]) # convert polar to cartesian coordinates
@@ -137,15 +140,13 @@ class Env:
         #returns the score obtained by the agent on a given atk position
         score = 0
 
-        # TODO check gk position
-
         # compute probability of scoring
-        prob_goal = self.get_prob(atk, gk_pos)*1000 # 1_000 for accuracy
+        prob_goal = self.get_prob(atk, gk_pos)
 
         # iterate over steps
         for _ in range(steps):
             # store if GK took goal or not
-            if np.random.randint(0, 1000) > prob_goal:
+            if np.random.random() > prob_goal:
                 score += 1
                
         return score
