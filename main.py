@@ -1,29 +1,30 @@
+from graphics import graphic
 import numpy as np
-from typing import List, Tuple
 from sim import *
 from net import *
+from graphics import graphic
 
 import warnings
 warnings.filterwarnings("ignore")
 
-EPOCHS_SIM = 10
-POPULATION_SIM = 1_000
+EPOCHS_SIM = 5
+POPULATION_SIM = 5_000
 ENV_STEPS = 50
 REPS = 20 # repetitions of the same atk position with some randomness for gk position
 
-RANDOMNESS = 13 # randomly chose in the range [-3, 3] and then summed to gk coords
+RANDOMNESS = 15 # randomly chose in the range [-3, 3] and then summed to gk coords
 
 EPOCH_TRAINING = 50
 RESET_NET = False
-LR = 0.05
+LR = 0.01
 MAX_LR = 0.1
 DYN_LR = 1.1 # set to 1 for static_lr
 
-HIDDEN_DIM = 10
-HIDDEN_LAYERS = 1
+HIDDEN_DIM = 20
+HIDDEN_LAYERS = 10
 
-WIDTH=60
-HEIGHT=60
+WIDTH=100
+HEIGHT=100
 
 def get_train_set(X, y, scores, env: Env, top=0.2):
     scores_sorted, X_sorted, y_sorted  = list(zip(*sorted(zip(scores, X, y), reverse=True)))
@@ -112,6 +113,10 @@ def main():
         lr = min(lr, MAX_LR)
     
     print("\nTraining Ended")
+
+    graphic(net, env)
+
+    '''
     while True:
         print('\n\n')
         x = int(input("Insert X: "))
@@ -120,6 +125,7 @@ def main():
         gk_x, gk_y = net.predict(np.array([[x/(env.width/2), y/(env.height/2)]]))[0][0]
 
         print(int(gk_x*(env.width/2)), int(gk_y*(env.height/2)))
+    '''
 
 if __name__ == '__main__':
     main()

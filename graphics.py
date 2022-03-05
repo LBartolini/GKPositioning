@@ -1,91 +1,50 @@
-import turtle
-import numpy as np
-from sim import Env
-#from net import Network
-#from main import width, height, goal_dim, penalty_area_r
+import pygame
+import time as t
+from sim import *
+from net import Network
 
-wn = turtle.Screen()
-pen = turtle.Turtle()
+RED = (255, 0, 0)
+LIGHT_RED = (128, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 
-atk = turtle.Turtle()
-gk = turtle.Turtle()
 
-def play(env: Env):
+def graphic(net: Network, env: Env):
+    window = pygame.display.set_mode((env.width, env.height))
+    pygame.mouse.set_visible(False)
 
-    wn.title("GKPositioning")
-    wn.setup(width=env.width, height=env.height)
-    wn.bgcolor("black")
-    wn.tracer(0)
-    wn.onscreenclick(lambda x, y: place_atk((x, y)))
+    while True:
+        window.fill((0, 0, 0))
+        pygame.draw.line(window, WHITE, env.goal_line_left.convert_cords(env), env.goal_line_right.convert_cords(env))
+        pygame.draw.line(window, GREEN, env.left_post.convert_cords(env), env.right_post.convert_cords(env))
+        pygame.draw.circle(window, GREEN, env.left_post.convert_cords(env), 2)
+        pygame.draw.circle(window, GREEN, env.right_post.convert_cords(env), 2)
+        pygame.draw.circle(window, GREEN, env.center_goal.convert_cords(env), env.penalty_area_r, 1)
 
-    pen.speed('fastest')
-    pen.pensize(2)
+        t.sleep(0.01)
 
-    atk.speed('fastest')
-    atk.setpos((0, 0))
-    atk.pensize(6)
-    atk.pendown()
-    atk.color('red')
-    atk.dot()
-    atk.penup()
 
-    gk.speed('fastest')
-    gk.setpos((0, env.center_goal.y))
-    gk.pensize(6)
-    gk.pendown()
-    gk.color('green')
-    gk.dot()
-    gk.penup()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
 
-    # Bottom line
-    pen.setpos(env.center_goal.get_tuple())
-    pen.pendown()
-    pen.color("white")
-    pen.dot()
-    pen.penup()
+        if any(pygame.mouse.get_pressed()):
+            atk = pygame.mouse.get_pos()
+            pygame.draw.line(window, LIGHT_RED, atk, env.left_post.convert_cords(env))
+            pygame.draw.line(window, LIGHT_RED, atk, env.right_post.convert_cords(env))
+            pygame.draw.circle(window, RED, atk, 2)
 
-    # Goal
-    pen.setpos((env.center_goal.x-env.goal_dim/2, env.center_goal.y))
-    pen.pendown()
-    pen.color("blue")
-    pen.forward(env.goal_dim)
-    pen.penup()
+            gk_x, gk_y = net.predict(np.array([[atk[0]/(env.width/2), atk[1]/(env.height/2)]]))[0][0]
+            gk_x, gk_y = int(gk_x*(env.width//2)), int(gk_y*(env.height//2))
+            gk = Point(gk_x, gk_y)
 
-    # Penalty Area
-    pen.setpos(env.center_goal.get_tuple())
-    pen.color("white")
-    pen.pendown()
-    pen.circle(env.penalty_area_r)
-    pen.penup()
+            pygame.draw.circle(window, GREEN, gk.convert_cords(env), 2)
 
-    wn.mainloop()
+        pygame.display.flip()
 
-def place_atk(atk_pos):
-    atk.pendown()
-    atk.color('black')
-    atk.dot()
-    atk.penup()
-
-    atk.setpos(atk_pos)
-    atk.pendown()
-    atk.color('red')
-    atk.dot()
-    atk.penup()
-
-    #place_gk(game(atk_pos, gk_net))
-
-def place_gk(gk_pos):
-    gk.pendown()
-    gk.color('black')
-    gk.dot()
-    gk.penup()
-
-    gk.setpos(gk_pos)
-    gk.pendown()
-    gk.color('green')
-    gk.dot()
-    gk.penup()
 
 if __name__ == '__main__':
-    env = Env()
-    play(env)
+    env = Env(width=120, height=120)
+
+    graphic(None, env)
