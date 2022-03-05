@@ -25,7 +25,7 @@ HIDDEN_LAYERS = 1
 WIDTH=60
 HEIGHT=60
 
-def get_train_set(X, y, scores, env, top=0.2):
+def get_train_set(X, y, scores, env: Env, top=0.2):
     scores_sorted, X_sorted, y_sorted  = list(zip(*sorted(zip(scores, X, y), reverse=True)))
     X_train, y_train = [], []
 
@@ -53,7 +53,7 @@ def create_net(inp_dim, out_dim, n_hidden=2, hidden_dim=10) -> Network:
 
     return net
 
-def get_gk_position(atk, net, env) -> Point:
+def get_gk_position(atk: Point, net: Network, env: Env) -> Point:
     x, y = atk.get_tuple()
     x /= (env.width/2)
     y /= (env.height/2)
@@ -64,7 +64,7 @@ def get_gk_position(atk, net, env) -> Point:
 
     return Point(int(pred_x*(env.width/2)), int(pred_y*(env.height/2)))
 
-def randomize(gk, rnd) -> Point:
+def randomize(gk: Point, rnd) -> Point:
     offset_x = np.random.choice(rnd*2+1)-rnd
     offset_y = np.random.choice(rnd*2+1)-rnd
 
